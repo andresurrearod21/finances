@@ -1,0 +1,3123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial OS</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600;700&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-page: #f5f5f0;
+            --bg-card: #ffffff;
+            --bg-soft: #fafaf7;
+            --bg-sidebar: #0a0a0a;
+            --bg-sidebar-hover: #1a1a1a;
+            --text-primary: #0a0a0a;
+            --text-secondary: #71717a;
+            --text-tertiary: #a1a1aa;
+            --text-on-dark: #fafafa;
+            --text-on-dark-muted: #71717a;
+            --border: #e4e4e7;
+            --border-soft: #ececec;
+            --green: #22c55e;
+            --green-light: #86efac;
+            --green-pale: #dcfce7;
+            --green-dark: #16a34a;
+            --red: #ef4444;
+            --red-light: #fca5a5;
+            --red-pale: #fee2e2;
+            --amber: #f59e0b;
+            --amber-pale: #fef3c7;
+            --blue: #3b82f6;
+            --shadow-card: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04);
+            --shadow-hover: 0 4px 6px rgba(0,0,0,0.05), 0 12px 24px rgba(0,0,0,0.06);
+            --radius-card: 20px;
+            --radius-sm: 10px;
+            --radius-md: 14px;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-page);
+            color: var(--text-primary);
+            line-height: 1.5;
+            font-feature-settings: 'cv11', 'ss01';
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .app-container { display: flex; height: 100vh; }
+
+        /* ============ SIDEBAR ============ */
+        .sidebar {
+            width: 72px;
+            background: var(--bg-sidebar);
+            padding: 24px 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex-shrink: 0;
+            gap: 8px;
+        }
+
+        .sidebar-logo {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: var(--green);
+            color: var(--bg-sidebar);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 18px;
+            margin-bottom: 16px;
+            font-family: 'Instrument Serif', serif;
+            font-style: italic;
+        }
+
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            align-items: center;
+            width: 100%;
+            padding: 0 12px;
+        }
+
+        .nav-item {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--text-on-dark-muted);
+            transition: all 0.15s ease;
+            position: relative;
+        }
+
+        .nav-item svg {
+            width: 20px;
+            height: 20px;
+            stroke-width: 1.75;
+        }
+
+        .nav-item:hover {
+            background: var(--bg-sidebar-hover);
+            color: var(--text-on-dark);
+        }
+
+        .nav-item.active {
+            background: var(--green);
+            color: var(--bg-sidebar);
+        }
+
+        .nav-tooltip {
+            position: absolute;
+            left: 56px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: var(--bg-sidebar);
+            color: var(--text-on-dark);
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.15s ease;
+            z-index: 100;
+            font-weight: 500;
+        }
+
+        .nav-item:hover .nav-tooltip { opacity: 1; }
+
+        /* ============ MAIN ============ */
+        .main-content { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+
+        .header {
+            padding: 32px 40px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: transparent;
+        }
+
+        .greeting {
+            font-family: 'Instrument Serif', Georgia, serif;
+            font-style: italic;
+            font-weight: 400;
+            font-size: 38px;
+            line-height: 1.1;
+            letter-spacing: -0.02em;
+            color: var(--text-primary);
+        }
+
+        .greeting-sub {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+            font-family: 'Inter', sans-serif;
+            font-style: normal;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .date-pill {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 10px 18px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: var(--shadow-card);
+        }
+
+        .btn {
+            padding: 10px 18px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            font-family: inherit;
+            transition: all 0.15s ease;
+            box-shadow: var(--shadow-card);
+        }
+
+        .btn:hover { background: var(--bg-soft); }
+
+        .btn-primary {
+            background: var(--text-primary);
+            color: var(--text-on-dark);
+            border-color: var(--text-primary);
+        }
+        .btn-primary:hover { background: #27272a; }
+
+        .btn-danger { background: var(--red); color: white; border-color: var(--red); }
+        .btn-danger:hover { background: #dc2626; }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+        .content { padding: 0 40px 40px; flex: 1; }
+
+        /* ============ KPI CARDS ============ */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 1200px) { .kpi-grid { grid-template-columns: repeat(2, 1fr); } }
+
+        .kpi-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-card);
+            padding: 22px 24px;
+            box-shadow: var(--shadow-card);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.2s ease;
+        }
+
+        .kpi-card:hover { box-shadow: var(--shadow-hover); transform: translateY(-1px); }
+
+        .kpi-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+            font-weight: 500;
+            margin-bottom: 12px;
+        }
+
+        .kpi-value {
+            font-size: 30px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .kpi-unit { font-size: 14px; color: var(--text-secondary); font-weight: 500; margin-left: 4px; }
+
+        .kpi-change {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .kpi-change.positive { color: var(--green-dark); }
+        .kpi-change.negative { color: var(--red); }
+
+        .kpi-accent {
+            position: absolute;
+            top: 18px;
+            right: 18px;
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+        }
+
+        .kpi-accent svg { width: 16px; height: 16px; stroke-width: 1.75; }
+        .kpi-accent.green { background: var(--green-pale); color: var(--green-dark); }
+        .kpi-accent.red { background: var(--red-pale); color: var(--red); }
+        .kpi-accent.amber { background: var(--amber-pale); color: var(--amber); }
+        .kpi-accent.gray { background: var(--bg-soft); color: var(--text-secondary); }
+
+        /* ============ CARD / GRID LAYOUTS ============ */
+        .card {
+            background: var(--bg-card);
+            border-radius: var(--radius-card);
+            padding: 24px;
+            box-shadow: var(--shadow-card);
+        }
+
+        .chart-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-card);
+            padding: 24px;
+            box-shadow: var(--shadow-card);
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 18px;
+        }
+
+        .chart-title { font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            margin-top: 8px;
+            letter-spacing: -0.01em;
+        }
+
+        .section-subtitle { font-size: 13px; color: var(--text-secondary); margin-bottom: 14px; }
+
+        .chart-period-tabs {
+            display: flex;
+            gap: 2px;
+            background: var(--bg-soft);
+            padding: 3px;
+            border-radius: 999px;
+            border: 1px solid var(--border-soft);
+        }
+
+        .period-tab {
+            padding: 5px 12px;
+            font-size: 12px;
+            border-radius: 999px;
+            cursor: pointer;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .period-tab.active { background: var(--text-primary); color: var(--text-on-dark); }
+
+        .chart-container { position: relative; height: 280px; }
+
+        .grid-main {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .grid-secondary {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        @media (max-width: 1100px) {
+            .grid-main, .grid-secondary { grid-template-columns: 1fr; }
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 16px;
+        }
+
+        /* ============ QUARTERLY HEATMAP (tiny) ============ */
+        .quarter-heatmap {
+            display: grid;
+            grid-template-rows: repeat(7, 11px);
+            grid-auto-flow: column;
+            grid-auto-columns: 11px;
+            gap: 3px;
+            margin-top: 12px;
+            width: fit-content;
+        }
+
+        .qh-cell {
+            width: 11px;
+            height: 11px;
+            border-radius: 2px;
+            background: #f4f4f5;
+        }
+
+        .qh-cell.l1 { background: #bbf7d0; }
+        .qh-cell.l2 { background: #86efac; }
+        .qh-cell.l3 { background: #4ade80; }
+        .qh-cell.l4 { background: #22c55e; }
+        .qh-cell.empty { background: transparent; }
+
+        .qh-months {
+            display: flex;
+            justify-content: space-between;
+            width: 11px;
+            min-width: 200px;
+            margin-top: 8px;
+            font-size: 10px;
+            color: var(--text-tertiary);
+            font-weight: 500;
+        }
+
+        .qh-legend {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 10px;
+            font-size: 10px;
+            color: var(--text-tertiary);
+        }
+
+        .qh-legend-cell { width: 8px; height: 8px; border-radius: 2px; }
+
+        /* ============ GOALS CARD ============ */
+        .goals-card-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .goal-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: var(--bg-soft);
+            border-radius: var(--radius-md);
+        }
+
+        .goal-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: var(--bg-card);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            color: var(--text-secondary);
+        }
+
+        .goal-icon svg { width: 18px; height: 18px; stroke-width: 1.75; }
+
+        .goal-info { flex: 1; min-width: 0; }
+        .goal-name { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+        .goal-detail { font-size: 11px; color: var(--text-secondary); }
+
+        .goal-ring {
+            width: 44px;
+            height: 44px;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .goal-ring-text {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        /* ============ INSIGHTS ============ */
+        .insight-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            padding: 14px 16px;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+            border: 1px solid var(--border-soft);
+            margin-bottom: 10px;
+        }
+
+        .insight-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .insight-icon.green { background: var(--green-pale); color: var(--green-dark); }
+        .insight-icon.red { background: var(--red-pale); color: var(--red); }
+        .insight-icon.amber { background: var(--amber-pale); color: var(--amber); }
+        .insight-icon.blue { background: #dbeafe; color: var(--blue); }
+        .insight-icon.purple { background: #ede9fe; color: #7c3aed; }
+
+        .insight-title { font-size: 13px; font-weight: 600; margin-bottom: 3px; }
+        .insight-text { font-size: 12px; color: var(--text-secondary); line-height: 1.5; }
+
+        /* ============ TABLES ============ */
+        .table-container {
+            background: var(--bg-card);
+            border-radius: var(--radius-card);
+            overflow: hidden;
+            box-shadow: var(--shadow-card);
+        }
+
+        .table-header {
+            padding: 18px 24px;
+            border-bottom: 1px solid var(--border-soft);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .table-search, input[type="text"]:not(.color-input), input[type="number"], input[type="date"], select, textarea {
+            padding: 9px 14px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            font-size: 13px;
+            font-family: inherit;
+            background: var(--bg-card);
+            color: var(--text-primary);
+            width: 100%;
+        }
+
+        .table-search:focus, input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--text-primary);
+        }
+
+        .table-search { max-width: 300px; }
+
+        table { width: 100%; border-collapse: collapse; }
+
+        th {
+            padding: 11px 24px;
+            text-align: left;
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-tertiary);
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        td {
+            padding: 14px 24px;
+            border-top: 1px solid var(--border-soft);
+            font-size: 13px;
+        }
+
+        tbody tr:hover { background: var(--bg-soft); }
+
+        .badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 500;
+            text-transform: capitalize;
+        }
+
+        .badge-success { background: var(--green-pale); color: var(--green-dark); }
+        .badge-danger { background: var(--red-pale); color: var(--red); }
+        .badge-blue { background: #dbeafe; color: var(--blue); }
+        .badge-amber { background: var(--amber-pale); color: var(--amber); }
+
+        /* ============ MODAL ============ */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(10,10,10,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.show { display: flex; }
+
+        .modal-content {
+            background: var(--bg-card);
+            border-radius: var(--radius-card);
+            padding: 28px;
+            max-width: 480px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+        }
+
+        .modal-title { font-size: 20px; font-weight: 700; margin-bottom: 22px; letter-spacing: -0.02em; }
+
+        .form-group { margin-bottom: 16px; }
+        .form-label { display: block; font-size: 12px; font-weight: 500; margin-bottom: 6px; color: var(--text-secondary); }
+
+        .modal-actions { display: flex; gap: 10px; margin-top: 24px; }
+        .modal-actions button { flex: 1; padding: 11px 16px; }
+
+        /* ============ TAB CONTENT ============ */
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* ============ STAT ROW ============ */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+
+        .stat-item {
+            background: var(--bg-card);
+            padding: 18px 20px;
+            border-radius: var(--radius-card);
+            box-shadow: var(--shadow-card);
+        }
+
+        .stat-label { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; font-weight: 500; }
+        .stat-value { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+
+        /* ============ ACCOUNTS / DEBT / GOAL CARDS ============ */
+        .account-card, .goal-card {
+            background: var(--bg-card);
+            border-radius: var(--radius-card);
+            padding: 22px;
+            box-shadow: var(--shadow-card);
+            transition: all 0.2s ease;
+        }
+
+        .account-card:hover { box-shadow: var(--shadow-hover); }
+
+        .account-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 14px;
+            font-size: 18px;
+        }
+
+        .account-name { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+        .account-type { font-size: 12px; color: var(--text-secondary); margin-bottom: 14px; text-transform: capitalize; }
+        .account-balance { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+        .account-actions { display: flex; gap: 8px; margin-top: 14px; }
+
+        .debt-row {
+            background: var(--bg-card);
+            border-radius: var(--radius-md);
+            padding: 16px 20px;
+            margin-bottom: 10px;
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr auto;
+            gap: 16px;
+            align-items: center;
+            box-shadow: var(--shadow-card);
+        }
+
+        @media (max-width: 768px) {
+            .debt-row { grid-template-columns: 1fr; gap: 8px; }
+        }
+
+        .debt-name { font-size: 14px; font-weight: 600; }
+        .debt-detail { font-size: 13px; color: var(--text-secondary); }
+        .debt-detail-label { font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 3px; }
+
+        .goal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .goal-title { font-size: 13px; font-weight: 500; color: var(--text-secondary); }
+        .goal-amount { font-size: 28px; font-weight: 700; margin: 4px 0; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+        .goal-target { font-size: 12px; color: var(--text-tertiary); }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: var(--bg-soft);
+            border-radius: 999px;
+            overflow: hidden;
+            margin: 14px 0 8px;
+        }
+
+        .progress-fill { height: 100%; background: var(--green); border-radius: 999px; transition: width 0.3s ease; }
+        .progress-fill.warning { background: var(--amber); }
+        .progress-fill.danger { background: var(--red); }
+
+        .goal-percent { font-size: 12px; font-weight: 600; color: var(--text-secondary); }
+
+        /* ============ SETTINGS ============ */
+        .settings-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 16px;
+            background: var(--bg-soft);
+            border-radius: var(--radius-md);
+            margin-bottom: 8px;
+        }
+
+        .settings-item-info { display: flex; align-items: center; gap: 12px; flex: 1; }
+
+        .color-dot { width: 20px; height: 20px; border-radius: 50%; flex-shrink: 0; }
+
+        .settings-item-name { font-size: 14px; font-weight: 500; }
+        .settings-item-meta { font-size: 12px; color: var(--text-secondary); }
+        .settings-item-actions { display: flex; gap: 6px; }
+
+        /* ============ TOAST ============ */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--text-primary);
+            color: var(--text-on-dark);
+            padding: 12px 18px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 500;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            z-index: 2000;
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 50px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state-icon { font-size: 28px; margin-bottom: 12px; opacity: 0.5; }
+        .empty-state-title { font-size: 14px; font-weight: 600; margin-bottom: 6px; color: var(--text-primary); }
+        .empty-state-text { font-size: 12px; }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a1a1aa; }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- SIDEBAR -->
+        <div class="sidebar">
+            <div class="sidebar-logo">F</div>
+            <div class="sidebar-nav">
+                <div class="nav-item active" data-page="overview" onclick="switchPage('overview', this)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12L12 3l9 9M5 10v10h14V10"/></svg>
+                    <span class="nav-tooltip">Overview</span>
+                </div>
+                <div class="nav-item" data-page="transactions" onclick="switchPage('transactions', this)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 6h18M3 12h18M3 18h12"/></svg>
+                    <span class="nav-tooltip">Transactions</span>
+                </div>
+                <div class="nav-item" data-page="accounts" onclick="switchPage('accounts', this)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+                    <span class="nav-tooltip">Accounts</span>
+                </div>
+                <div class="nav-item" data-page="revenue" onclick="switchPage('revenue', this)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 17l6-6 4 4 8-8M14 7h7v7"/></svg>
+                    <span class="nav-tooltip">Revenue</span>
+                </div>
+                <div class="nav-item" data-page="expenses" onclick="switchPage('expenses', this)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 7l6 6 4-4 8 8M14 17h7v-7"/></svg>
+                    <span class="nav-tooltip">Expenses</span>
+                </div>
+                <div class="nav-item" data-page="debt" onclick="switchPage('debt', this)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18M7 15h2"/></svg>
+                    <span class="nav-tooltip">Debt</span>
+                </div>
+                <div class="nav-item" data-page="forecasting" onclick="switchPage('forecasting', this)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 12c3-3 5-3 7 0s4 3 7 0 4-3 4-3"/><circle cx="12" cy="12" r="9"/></svg>
+                    <span class="nav-tooltip">Forecasting</span>
+                </div>
+                <div class="nav-item" data-page="goals" onclick="switchPage('goals', this)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>
+                    <span class="nav-tooltip">Goals</span>
+                </div>
+                <div class="nav-item" data-page="settings" onclick="switchPage('settings', this)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.8l.1.1a2 2 0 11-2.8 2.8l-.1-.1a1.7 1.7 0 00-1.8-.3 1.7 1.7 0 00-1 1.5V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1.1-1.5 1.7 1.7 0 00-1.8.3l-.1.1a2 2 0 11-2.8-2.8l.1-.1a1.7 1.7 0 00.3-1.8 1.7 1.7 0 00-1.5-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.5-1.1 1.7 1.7 0 00-.3-1.8l-.1-.1a2 2 0 112.8-2.8l.1.1a1.7 1.7 0 001.8.3H9a1.7 1.7 0 001-1.5V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.5 1.7 1.7 0 001.8-.3l.1-.1a2 2 0 112.8 2.8l-.1.1a1.7 1.7 0 00-.3 1.8V9a1.7 1.7 0 001.5 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.5 1z"/></svg>
+                    <span class="nav-tooltip">Settings</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN -->
+        <div class="main-content">
+            <div class="header">
+                <div>
+                    <div class="greeting" id="greeting">Good evening, Andres</div>
+                    <div class="greeting-sub" id="pageSubtitle">Here's your financial overview</div>
+                </div>
+                <div class="header-right">
+                    <div class="date-pill" id="datePill">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+                        <span id="dateText"></span>
+                    </div>
+                    <button class="btn btn-primary" onclick="openTransactionModal()">+ Log Transaction</button>
+                </div>
+            </div>
+
+            <div class="content">
+                <!-- OVERVIEW -->
+                <div id="overview" class="tab-content active">
+                    <div class="kpi-grid">
+                        <div class="kpi-card">
+                            <div class="kpi-accent green">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M5 9l7-7 7 7"/></svg>
+                            </div>
+                            <div class="kpi-label">Net worth</div>
+                            <div class="kpi-value" id="netWorth">$0</div>
+                            <div class="kpi-change" id="netWorthChange">Assets minus debt</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-accent gray">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M2 10h20"/></svg>
+                            </div>
+                            <div class="kpi-label">Cash available</div>
+                            <div class="kpi-value" id="cashAvailable">$0</div>
+                            <div class="kpi-change">Liquid across accounts</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-accent green">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-8M14 7h7v7"/></svg>
+                            </div>
+                            <div class="kpi-label">Monthly revenue</div>
+                            <div class="kpi-value" id="monthlyRevenue">$0</div>
+                            <div class="kpi-change" id="revenueChange">This month</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-accent red">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7l6 6 4-4 8 8M14 17h7v-7"/></svg>
+                            </div>
+                            <div class="kpi-label">Monthly expenses</div>
+                            <div class="kpi-value" id="monthlyExpenses">$0</div>
+                            <div class="kpi-change" id="expenseChange">This month</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-accent green">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+                            </div>
+                            <div class="kpi-label">Cash flow</div>
+                            <div class="kpi-value" id="monthlyFlow">$0</div>
+                            <div class="kpi-change" id="flowChange">Net this month</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-accent red">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/></svg>
+                            </div>
+                            <div class="kpi-label">Debt remaining</div>
+                            <div class="kpi-value" id="debtRemaining">$0</div>
+                            <div class="kpi-change" id="debtChange">Total outstanding</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-accent amber">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-12V5l-8-3-8 3v5c0 8 8 12 8 12z"/></svg>
+                            </div>
+                            <div class="kpi-label">Emergency fund</div>
+                            <div class="kpi-value" id="emergencyFund">$0</div>
+                            <div class="kpi-change" id="efPercent">0% of goal</div>
+                        </div>
+                        <div class="kpi-card">
+                            <div class="kpi-accent green">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                            </div>
+                            <div class="kpi-label">Financial health</div>
+                            <div class="kpi-value" id="healthScore">--</div>
+                            <div class="kpi-change" id="healthStatus">Overall</div>
+                        </div>
+                    </div>
+
+                    <!-- MAIN GRID: bar chart + goals -->
+                    <div class="grid-main">
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <div>
+                                    <div class="chart-title">Daily cash flow</div>
+                                    <div class="section-subtitle">Income vs expenses</div>
+                                </div>
+                                <div class="chart-period-tabs">
+                                    <div class="period-tab active" onclick="setChartPeriod(this, 7)">7D</div>
+                                    <div class="period-tab" onclick="setChartPeriod(this, 30)">30D</div>
+                                    <div class="period-tab" onclick="setChartPeriod(this, 90)">90D</div>
+                                </div>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="cashFlowChart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <div>
+                                    <div class="chart-title">Goals</div>
+                                    <div class="section-subtitle">Progress this month</div>
+                                </div>
+                            </div>
+                            <div class="goals-card-stack" id="overviewGoals"></div>
+                        </div>
+                    </div>
+
+                    <!-- SECONDARY: donut + quarterly heatmap + expenses -->
+                    <div class="grid-secondary">
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <div>
+                                    <div class="chart-title">Revenue by source</div>
+                                    <div class="section-subtitle">This month</div>
+                                </div>
+                            </div>
+                            <div class="chart-container" style="height: 240px;">
+                                <canvas id="sourceChart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <div>
+                                    <div class="chart-title">Income activity</div>
+                                    <div class="section-subtitle">Last quarter</div>
+                                </div>
+                            </div>
+                            <div class="quarter-heatmap" id="quarterHeatmap"></div>
+                            <div class="qh-months" id="qhMonths"></div>
+                            <div class="qh-legend">
+                                <span>Less</span>
+                                <div class="qh-legend-cell" style="background: var(--bg-soft); border: 1px solid var(--border-soft);"></div>
+                                <div class="qh-legend-cell" style="background: #bbf7d0;"></div>
+                                <div class="qh-legend-cell" style="background: #86efac;"></div>
+                                <div class="qh-legend-cell" style="background: #4ade80;"></div>
+                                <div class="qh-legend-cell" style="background: #22c55e;"></div>
+                                <span>More</span>
+                            </div>
+                        </div>
+
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <div>
+                                    <div class="chart-title">Top expenses</div>
+                                    <div class="section-subtitle">This month</div>
+                                </div>
+                            </div>
+                            <div class="chart-container" style="height: 240px;">
+                                <canvas id="expenseCategoryChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- INSIGHTS -->
+                    <div class="section-title">Smart insights</div>
+                    <div class="grid-3" id="insightsContainer"></div>
+                </div>
+
+                <!-- TRANSACTIONS -->
+                <div id="transactions" class="tab-content">
+                    <div class="section-subtitle">All your income and expense records</div>
+                    <div class="table-container">
+                        <div class="table-header">
+                            <input type="text" class="table-search" placeholder="Search transactions..." id="transactionSearch" oninput="renderTransactionTable()">
+                            <select id="transactionFilter" onchange="renderTransactionTable()" style="max-width: 150px;">
+                                <option value="all">All Types</option>
+                                <option value="income">Income</option>
+                                <option value="expense">Expenses</option>
+                            </select>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Description</th>
+                                    <th>Category</th>
+                                    <th>Type</th>
+                                    <th>Amount</th>
+                                    <th>Account</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="transactionBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ACCOUNTS -->
+                <div id="accounts" class="tab-content">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <div class="section-subtitle" style="margin: 0;">Manage all your bank accounts and credit cards</div>
+                        <button class="btn btn-primary" onclick="openAccountModal()">+ Add Account</button>
+                    </div>
+                    <div class="stats-row" id="accountStats"></div>
+                    <div class="grid-3" id="accountsList"></div>
+                </div>
+
+                <!-- REVENUE -->
+                <div id="revenue" class="tab-content">
+                    <div class="section-subtitle">Track all income sources and revenue trends</div>
+                    <div class="stats-row" id="revenueStats"></div>
+                    <div class="grid-2">
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <div class="chart-title">Revenue Over Time</div>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="revenueTimeChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <div class="chart-title">By Source (This Month)</div>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="revenueSourceChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart-card" style="margin-top: 20px;">
+                        <div class="chart-header">
+                            <div class="chart-title">Source Performance</div>
+                        </div>
+                        <div id="revenueSourceList"></div>
+                    </div>
+                </div>
+
+                <!-- EXPENSES -->
+                <div id="expenses" class="tab-content">
+                    <div class="section-subtitle">Track all spending and expense categories</div>
+                    <div class="stats-row" id="expenseStats"></div>
+                    <div class="grid-2">
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <div class="chart-title">Expenses Over Time</div>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="expenseTimeChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-card">
+                            <div class="chart-header">
+                                <div class="chart-title">By Category (This Month)</div>
+                            </div>
+                            <div class="chart-container">
+                                <canvas id="expensesCategoryChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart-card" style="margin-top: 20px;">
+                        <div class="chart-header">
+                            <div class="chart-title">Category Breakdown</div>
+                        </div>
+                        <div id="expenseCategoryList"></div>
+                    </div>
+                </div>
+
+                <!-- DEBT -->
+                <div id="debt" class="tab-content">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <div class="section-subtitle" style="margin: 0;">Manage and pay down your debt with the avalanche method</div>
+                        <button class="btn btn-primary" onclick="openDebtModal()">+ Add Debt</button>
+                    </div>
+                    <div class="stats-row" id="debtStats"></div>
+                    <div class="chart-card" style="margin-bottom: 20px;">
+                        <div class="chart-header">
+                            <div class="chart-title">Debt Balances</div>
+                            <div class="section-subtitle">Sorted by APR (avalanche order)</div>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="debtChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <div class="chart-title">All Debts</div>
+                        </div>
+                        <div id="debtList"></div>
+                    </div>
+                </div>
+
+                <!-- FORECASTING -->
+                <div id="forecasting" class="tab-content">
+                    <div class="section-subtitle">Project your cash flow into the future based on recent trends</div>
+                    <div class="stats-row" id="forecastStats"></div>
+                    <div class="chart-card" style="margin-bottom: 20px;">
+                        <div class="chart-header">
+                            <div>
+                                <div class="chart-title">Cash Flow Forecast</div>
+                                <div class="section-subtitle">Based on last 60 days of activity</div>
+                            </div>
+                            <div class="chart-period-tabs">
+                                <div class="period-tab active" onclick="setForecastPeriod(this, 30)">30D</div>
+                                <div class="period-tab" onclick="setForecastPeriod(this, 60)">60D</div>
+                                <div class="period-tab" onclick="setForecastPeriod(this, 90)">90D</div>
+                            </div>
+                        </div>
+                        <div class="chart-container" style="height: 320px;">
+                            <canvas id="forecastChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="grid-3" id="forecastInsights"></div>
+                </div>
+
+                <!-- GOALS -->
+                <div id="goals" class="tab-content">
+                    <div class="section-subtitle">Track progress on your financial milestones</div>
+                    <div class="grid-3" id="goalsList"></div>
+                </div>
+
+                <!-- SETTINGS -->
+                <div id="settings" class="tab-content">
+                    <div class="section-subtitle">Customize your Financial OS</div>
+
+                    <div class="chart-card" style="margin-bottom: 20px;">
+                        <div class="chart-header">
+                            <div class="chart-title">Income Sources</div>
+                            <button class="btn btn-primary btn-sm" onclick="openSourceModal()">+ Add Source</button>
+                        </div>
+                        <div id="sourcesSettings"></div>
+                    </div>
+
+                    <div class="chart-card" style="margin-bottom: 20px;">
+                        <div class="chart-header">
+                            <div class="chart-title">Expense Categories</div>
+                            <button class="btn btn-primary btn-sm" onclick="openCategoryModal()">+ Add Category</button>
+                        </div>
+                        <div id="categoriesSettings"></div>
+                    </div>
+
+                    <div class="chart-card" style="margin-bottom: 20px;">
+                        <div class="chart-header">
+                            <div class="chart-title">Financial Goals</div>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Monthly Income Target</label>
+                            <input type="number" id="incomeGoalInput" value="5000">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Emergency Fund Target</label>
+                            <input type="number" id="efGoalInput" value="7000">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Debt Payoff Target</label>
+                            <input type="number" id="debtGoalInput" value="30000">
+                        </div>
+                        <button class="btn btn-primary" onclick="updateGoals()">Save Goals</button>
+                    </div>
+
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <div class="chart-title">Data Management</div>
+                        </div>
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button class="btn" onclick="exportData()">Export Data (JSON)</button>
+                            <button class="btn btn-danger" onclick="clearAllData()">Clear All Data</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALS -->
+    <div id="transactionModal" class="modal">
+        <div class="modal-content">
+            <h2 class="modal-title" id="transactionModalTitle">Log Transaction</h2>
+            <input type="hidden" id="editingTransactionId">
+            <div class="form-group">
+                <label class="form-label">Date</label>
+                <input type="date" id="transDate">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Type</label>
+                <select id="transType" onchange="updateTransactionSourceOptions()">
+                    <option value="income">Income</option>
+                    <option value="expense">Expense</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label" id="transSourceLabel">Source</label>
+                <select id="transSource"></select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Amount</label>
+                <input type="number" id="transAmount" placeholder="0.00" step="0.01">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Account</label>
+                <select id="transAccount"></select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Description (optional)</label>
+                <input type="text" id="transDesc">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-primary" onclick="saveTransaction()">Save</button>
+                <button class="btn" onclick="closeModal('transactionModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="accountModal" class="modal">
+        <div class="modal-content">
+            <h2 class="modal-title" id="accountModalTitle">Add Account</h2>
+            <input type="hidden" id="editingAccountId">
+            <div class="form-group">
+                <label class="form-label">Account Name</label>
+                <input type="text" id="accountName" placeholder="e.g., Chase Checking">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Account Type</label>
+                <select id="accountType">
+                    <option value="checking">Checking</option>
+                    <option value="savings">Savings</option>
+                    <option value="credit">Credit Card</option>
+                    <option value="debit">Debit Card</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Balance</label>
+                <input type="number" id="accountBalance" placeholder="0.00" step="0.01">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-primary" onclick="saveAccount()">Save</button>
+                <button class="btn" onclick="closeModal('accountModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="debtModal" class="modal">
+        <div class="modal-content">
+            <h2 class="modal-title" id="debtModalTitle">Add Debt</h2>
+            <input type="hidden" id="editingDebtId">
+            <div class="form-group">
+                <label class="form-label">Card/Loan Name</label>
+                <input type="text" id="debtName" placeholder="e.g., Capital One Quicksilver">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Current Balance</label>
+                <input type="number" id="debtBalance" placeholder="0.00" step="0.01">
+            </div>
+            <div class="form-group">
+                <label class="form-label">APR (%)</label>
+                <input type="number" id="debtAPR" placeholder="18.99" step="0.01">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Minimum Payment</label>
+                <input type="number" id="debtMin" placeholder="25.00" step="0.01">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-primary" onclick="saveDebt()">Save</button>
+                <button class="btn" onclick="closeModal('debtModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="sourceModal" class="modal">
+        <div class="modal-content">
+            <h2 class="modal-title" id="sourceModalTitle">Add Income Source</h2>
+            <input type="hidden" id="editingSourceId">
+            <div class="form-group">
+                <label class="form-label">Source Name</label>
+                <input type="text" id="sourceName" placeholder="e.g., AG Visuals">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Color</label>
+                <input type="color" id="sourceColor" value="#3b82f6">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-primary" onclick="saveSource()">Save</button>
+                <button class="btn" onclick="closeModal('sourceModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="categoryModal" class="modal">
+        <div class="modal-content">
+            <h2 class="modal-title" id="categoryModalTitle">Add Expense Category</h2>
+            <input type="hidden" id="editingCategoryId">
+            <div class="form-group">
+                <label class="form-label">Category Name</label>
+                <input type="text" id="categoryName" placeholder="e.g., Rent">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Color</label>
+                <input type="color" id="categoryColor" value="#ef4444">
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-primary" onclick="saveCategory()">Save</button>
+                <button class="btn" onclick="closeModal('categoryModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============ DATA ============
+        let app = {
+            settings: {
+                incomeGoal: 5000,
+                efGoal: 7000,
+                debtGoal: 30000,
+                incomeSources: [
+                    { id: 1, name: 'AG Visuals', color: '#3b82f6' },
+                    { id: 2, name: 'Turo', color: '#10b981' },
+                    { id: 3, name: 'La Pura Vida', color: '#f59e0b' }
+                ],
+                expenseCategories: [
+                    { id: 1, name: 'Rent', color: '#ef4444' },
+                    { id: 2, name: 'Utilities', color: '#6366f1' },
+                    { id: 3, name: 'Food', color: '#f59e0b' },
+                    { id: 4, name: 'Transportation', color: '#3b82f6' },
+                    { id: 5, name: 'Entertainment', color: '#8b5cf6' },
+                    { id: 6, name: 'Savings/EF', color: '#10b981' },
+                    { id: 7, name: 'Debt Payment', color: '#dc2626' },
+                    { id: 8, name: 'Personal', color: '#06b6d4' }
+                ],
+                accounts: [
+                    { id: 1, name: 'Checking', type: 'checking', balance: 0 },
+                    { id: 2, name: 'Savings', type: 'savings', balance: 0 }
+                ],
+                debts: []
+            },
+            transactions: [],
+            chartPeriod: 7,
+            forecastPeriod: 30,
+            nextId: { trans: 1, source: 10, category: 20, account: 10, debt: 1 }
+        };
+
+        // ============ SUPABASE ============
+        const SUPABASE_URL = 'https://tuvmmjwstgooswowfcij.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1dm1tandzdGdvb3N3b3dmY2lqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE2NDY2ODIsImV4cCI6MjA5NzIyMjY4Mn0.jF0-sP0UEqfD_Ara78xVwar_TMIbpbHnga9j1cGtRFI';
+        const USER_ID = 'andres';
+        const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+        // Map Supabase rows (snake_case) to in-memory shape (camelCase)
+        const mapDebtFromDb = (d) => ({ id: d.id, name: d.name, balance: Number(d.balance), apr: Number(d.apr), minPayment: Number(d.min_payment) });
+        const mapTransFromDb = (t) => ({ id: t.id, date: t.date, type: t.type, sourceId: t.source_id, accountId: t.account_id, amount: Number(t.amount), description: t.description });
+        const mapAccountFromDb = (a) => ({ id: a.id, name: a.name, type: a.type, balance: Number(a.balance) });
+
+        async function loadData() {
+            try {
+                const [settingsRes, sourcesRes, catsRes, acctsRes, debtsRes, txsRes] = await Promise.all([
+                    sb.from('app_settings').select('*').eq('user_id', USER_ID).maybeSingle(),
+                    sb.from('income_sources').select('*').eq('user_id', USER_ID).order('id'),
+                    sb.from('expense_categories').select('*').eq('user_id', USER_ID).order('id'),
+                    sb.from('accounts').select('*').eq('user_id', USER_ID).order('id'),
+                    sb.from('debts').select('*').eq('user_id', USER_ID).order('id'),
+                    sb.from('transactions').select('*').eq('user_id', USER_ID).order('date', { ascending: false })
+                ]);
+
+                // Settings (create default row if missing)
+                if (settingsRes.data) {
+                    app.settings.incomeGoal = Number(settingsRes.data.income_goal);
+                    app.settings.efGoal = Number(settingsRes.data.ef_goal);
+                    app.settings.debtGoal = Number(settingsRes.data.debt_goal);
+                } else {
+                    await sb.from('app_settings').insert({
+                        user_id: USER_ID,
+                        income_goal: app.settings.incomeGoal,
+                        ef_goal: app.settings.efGoal,
+                        debt_goal: app.settings.debtGoal
+                    });
+                }
+
+                // Seed defaults if first time
+                if (!sourcesRes.data || sourcesRes.data.length === 0) {
+                    const defaults = [
+                        { user_id: USER_ID, name: 'AG Visuals', color: '#3b82f6' },
+                        { user_id: USER_ID, name: 'Turo', color: '#10b981' },
+                        { user_id: USER_ID, name: 'La Pura Vida', color: '#f59e0b' }
+                    ];
+                    const { data } = await sb.from('income_sources').insert(defaults).select();
+                    app.settings.incomeSources = data || [];
+                } else {
+                    app.settings.incomeSources = sourcesRes.data;
+                }
+
+                if (!catsRes.data || catsRes.data.length === 0) {
+                    const defaults = [
+                        { user_id: USER_ID, name: 'Rent', color: '#ef4444' },
+                        { user_id: USER_ID, name: 'Utilities', color: '#6366f1' },
+                        { user_id: USER_ID, name: 'Food', color: '#f59e0b' },
+                        { user_id: USER_ID, name: 'Transportation', color: '#3b82f6' },
+                        { user_id: USER_ID, name: 'Entertainment', color: '#8b5cf6' },
+                        { user_id: USER_ID, name: 'Savings/EF', color: '#10b981' },
+                        { user_id: USER_ID, name: 'Debt Payment', color: '#dc2626' },
+                        { user_id: USER_ID, name: 'Personal', color: '#06b6d4' }
+                    ];
+                    const { data } = await sb.from('expense_categories').insert(defaults).select();
+                    app.settings.expenseCategories = data || [];
+                } else {
+                    app.settings.expenseCategories = catsRes.data;
+                }
+
+                if (!acctsRes.data || acctsRes.data.length === 0) {
+                    const defaults = [
+                        { user_id: USER_ID, name: 'Checking', type: 'checking', balance: 0 },
+                        { user_id: USER_ID, name: 'Savings', type: 'savings', balance: 0 }
+                    ];
+                    const { data } = await sb.from('accounts').insert(defaults).select();
+                    app.settings.accounts = (data || []).map(mapAccountFromDb);
+                } else {
+                    app.settings.accounts = acctsRes.data.map(mapAccountFromDb);
+                }
+
+                app.settings.debts = (debtsRes.data || []).map(mapDebtFromDb);
+                app.transactions = (txsRes.data || []).map(mapTransFromDb);
+
+                toast('✓ Connected to cloud');
+            } catch (e) {
+                toast('❌ Connection failed — check console');
+                console.error('Supabase load error:', e);
+            }
+            initUI();
+        }
+
+        // Kept for compatibility — no-op since each operation persists directly
+        function saveData() {}
+
+        function toast(msg) {
+            const t = document.createElement('div');
+            t.className = 'toast';
+            t.textContent = msg;
+            document.body.appendChild(t);
+            setTimeout(() => t.remove(), 2500);
+        }
+
+        // ============ INIT ============
+        function initUI() {
+            document.getElementById('incomeGoalInput').value = app.settings.incomeGoal;
+            document.getElementById('efGoalInput').value = app.settings.efGoal;
+            document.getElementById('debtGoalInput').value = app.settings.debtGoal;
+            updateOverview();
+        }
+
+        // ============ NAVIGATION ============
+        function switchPage(page, el) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById(page).classList.add('active');
+            el.classList.add('active');
+
+            const subtitles = {
+                overview: "Here's your financial overview",
+                transactions: 'All your income and expenses',
+                accounts: 'Bank accounts and credit cards',
+                revenue: 'Income sources and trends',
+                expenses: 'Spending categories and trends',
+                debt: 'Pay down with the avalanche method',
+                forecasting: 'Project the next 30, 60, 90 days',
+                goals: 'Track your financial milestones',
+                settings: 'Customize your workspace'
+            };
+            const subEl = document.getElementById('pageSubtitle');
+            if (subEl) subEl.textContent = subtitles[page] || '';
+
+            if (page === 'overview') updateOverview();
+            if (page === 'transactions') renderTransactionTable();
+            if (page === 'accounts') updateAccountsPage();
+            if (page === 'revenue') updateRevenuePage();
+            if (page === 'expenses') updateExpensesPage();
+            if (page === 'debt') updateDebtPage();
+            if (page === 'forecasting') updateForecastPage();
+            if (page === 'goals') updateGoalsPage();
+            if (page === 'settings') updateSettingsPage();
+        }
+
+        // ============ HELPERS ============
+        function formatCurrency(n) {
+            return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(n || 0);
+        }
+
+        function getMonthRange() {
+            const now = new Date();
+            return {
+                start: new Date(now.getFullYear(), now.getMonth(), 1),
+                end: new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
+            };
+        }
+
+        // Parse "YYYY-MM-DD" as a LOCAL date, not UTC.
+        // new Date("2026-06-16") creates midnight UTC which shifts the day in non-UTC timezones.
+        function parseLocalDate(dateStr) {
+            if (!dateStr) return null;
+            const parts = dateStr.split('-');
+            return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        }
+
+        // Get today as "YYYY-MM-DD" using LOCAL date components (not UTC).
+        // Date input's valueAsDate setter uses UTC, which shifts the displayed date forward
+        // in the evening for users in UTC-negative timezones.
+        function todayLocalISO() {
+            const d = new Date();
+            const y = d.getFullYear();
+            const m = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            return `${y}-${m}-${day}`;
+        }
+
+        function getTransInRange(start, end) {
+            return app.transactions.filter(t => {
+                const d = parseLocalDate(t.date);
+                return d >= start && d <= end;
+            });
+        }
+
+        // Exclusive end - for day bucketing where we don't want the next day's
+        // midnight transaction counted in the current day
+        function getTransInDayBucket(dayStart, dayEnd) {
+            return app.transactions.filter(t => {
+                const d = parseLocalDate(t.date);
+                return d >= dayStart && d < dayEnd;
+            });
+        }
+
+        function getMonthlyMetrics() {
+            const { start, end } = getMonthRange();
+            const trans = getTransInRange(start, end);
+            const income = trans.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+            const expenses = trans.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+            return { income, expenses, flow: income - expenses };
+        }
+
+        function getTotalDebt() {
+            return app.settings.debts.reduce((s, d) => s + (d.balance || 0), 0);
+        }
+
+        function getCashAvailable() {
+            return app.settings.accounts
+                .filter(a => a.type === 'checking' || a.type === 'savings' || a.type === 'debit')
+                .reduce((s, a) => s + (a.balance || 0), 0);
+        }
+
+        function getEFAmount() {
+            // Savings accounts + Savings/EF category transactions
+            const savingsAccount = app.settings.accounts.find(a => a.type === 'savings');
+            return savingsAccount ? savingsAccount.balance : 0;
+        }
+
+        function calculateHealthScore() {
+            const m = getMonthlyMetrics();
+            const debt = getTotalDebt();
+            const cash = getCashAvailable();
+            const ef = getEFAmount();
+
+            let score = 50; // baseline
+            if (m.flow > 0) score += 15;
+            if (m.flow > 500) score += 10;
+            if (ef >= app.settings.efGoal * 0.5) score += 10;
+            if (ef >= app.settings.efGoal) score += 5;
+            if (debt === 0) score += 10;
+            else if (debt < cash) score += 5;
+            if (m.income >= app.settings.incomeGoal) score += 5;
+            return Math.min(100, Math.max(0, score));
+        }
+
+        // ============ OVERVIEW ============
+        function updateOverview() {
+            const m = getMonthlyMetrics();
+            const debt = getTotalDebt();
+            const cash = getCashAvailable();
+            const ef = getEFAmount();
+            const netWorth = cash - debt;
+            const health = calculateHealthScore();
+
+            document.getElementById('healthScore').textContent = health + '%';
+            const healthStatus = health >= 80 ? '↑ Strong' : health >= 60 ? '→ Good' : health >= 40 ? '⚠ Needs work' : '↓ Critical';
+            const healthEl = document.getElementById('healthStatus');
+            healthEl.textContent = healthStatus;
+            healthEl.className = 'kpi-change ' + (health >= 60 ? 'positive' : 'negative');
+
+            document.getElementById('netWorth').textContent = formatCurrency(netWorth);
+            document.getElementById('netWorth').style.color = netWorth >= 0 ? 'var(--text-primary)' : 'var(--danger)';
+            document.getElementById('cashAvailable').textContent = formatCurrency(cash);
+            document.getElementById('monthlyRevenue').textContent = formatCurrency(m.income);
+            document.getElementById('monthlyExpenses').textContent = formatCurrency(m.expenses);
+            document.getElementById('monthlyFlow').textContent = formatCurrency(m.flow);
+            document.getElementById('monthlyFlow').style.color = m.flow >= 0 ? 'var(--success)' : 'var(--danger)';
+            document.getElementById('flowChange').textContent = m.flow >= 0 ? '↑ Positive' : '↓ Negative';
+            document.getElementById('flowChange').className = 'kpi-change ' + (m.flow >= 0 ? 'positive' : 'negative');
+            document.getElementById('debtRemaining').textContent = formatCurrency(debt);
+            document.getElementById('emergencyFund').textContent = formatCurrency(ef);
+            const efPct = Math.round((ef / app.settings.efGoal) * 100);
+            document.getElementById('efPercent').textContent = efPct + '% of $' + app.settings.efGoal.toLocaleString();
+
+            renderCashFlowChart();
+            renderSourceChart();
+            renderExpenseCategoryChart('expenseCategoryChart');
+            renderQuarterHeatmap();
+            renderOverviewGoals();
+            renderInsights();
+            updateGreeting();
+        }
+
+        function setChartPeriod(el, days) {
+            document.querySelectorAll('#overview .period-tab').forEach(t => t.classList.remove('active'));
+            el.classList.add('active');
+            app.chartPeriod = days;
+            renderCashFlowChart();
+        }
+
+        function renderCashFlowChart() {
+            const days = app.chartPeriod;
+            const labels = [];
+            const income = [];
+            const expenses = [];
+
+            for (let i = days - 1; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                d.setHours(0, 0, 0, 0);
+                const next = new Date(d);
+                next.setDate(next.getDate() + 1);
+
+                labels.push(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                const dayTrans = getTransInDayBucket(d, next);
+                income.push(dayTrans.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0));
+                expenses.push(dayTrans.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0));
+            }
+
+            const ctx = document.getElementById('cashFlowChart');
+            if (window.cashFlowChartInst) window.cashFlowChartInst.destroy();
+            window.cashFlowChartInst = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            label: 'Income',
+                            data: income,
+                            backgroundColor: '#22c55e',
+                            borderRadius: 6,
+                            borderSkipped: false,
+                            barPercentage: 0.7,
+                            categoryPercentage: 0.7
+                        },
+                        {
+                            label: 'Expenses',
+                            data: expenses,
+                            backgroundColor: '#e4e4e7',
+                            borderRadius: 6,
+                            borderSkipped: false,
+                            barPercentage: 0.7,
+                            categoryPercentage: 0.7
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: { intersect: false, mode: 'index' },
+                    plugins: {
+                        legend: { position: 'top', align: 'end', labels: { boxWidth: 10, boxHeight: 10, padding: 12, font: { size: 12, family: 'Inter' } } },
+                        tooltip: {
+                            backgroundColor: '#0a0a0a',
+                            titleFont: { family: 'Inter', size: 12 },
+                            bodyFont: { family: 'Inter', size: 12 },
+                            padding: 10,
+                            cornerRadius: 8,
+                            displayColors: true,
+                            boxWidth: 8,
+                            boxHeight: 8
+                        }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.04)', drawBorder: false }, ticks: { font: { family: 'Inter', size: 11 }, color: '#a1a1aa' } },
+                        x: { grid: { display: false }, ticks: { font: { family: 'Inter', size: 11 }, color: '#71717a' } }
+                    }
+                }
+            });
+        }
+
+        function renderSourceChart() {
+            const { start, end } = getMonthRange();
+            const trans = getTransInRange(start, end).filter(t => t.type === 'income');
+            const data = {};
+            trans.forEach(t => {
+                const s = app.settings.incomeSources.find(x => x.id === t.sourceId);
+                if (s) data[s.name] = (data[s.name] || 0) + t.amount;
+            });
+
+            const card = document.getElementById('sourceChart').closest('.chart-card');
+            const container = card.querySelector('.chart-container');
+            
+            if (window.sourceChartInst) {
+                window.sourceChartInst.destroy();
+                window.sourceChartInst = null;
+            }
+            
+            if (Object.keys(data).length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📊</div><div class="empty-state-title">No income yet</div><div class="empty-state-text">Log income to see breakdown</div></div>';
+                return;
+            }
+
+            // Always rebuild canvas to handle case where empty state was previously shown
+            container.innerHTML = '<canvas id="sourceChart"></canvas>';
+            const ctx = document.getElementById('sourceChart');
+
+            window.sourceChartInst = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: Object.keys(data),
+                    datasets: [{
+                        data: Object.values(data),
+                        backgroundColor: Object.keys(data).map(name => 
+                            app.settings.incomeSources.find(s => s.name === name)?.color || '#999'
+                        ),
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '65%',
+                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 12 } } } }
+                }
+            });
+        }
+
+        function renderExpenseCategoryChart(canvasId) {
+            const { start, end } = getMonthRange();
+            const trans = getTransInRange(start, end).filter(t => t.type === 'expense');
+            const data = {};
+            trans.forEach(t => {
+                const c = app.settings.expenseCategories.find(x => x.id === t.sourceId);
+                if (c) data[c.name] = (data[c.name] || 0) + t.amount;
+            });
+
+            let canvas = document.getElementById(canvasId);
+            if (!canvas) return;
+            const container = canvas.closest('.chart-container');
+            const key = canvasId + 'Inst';
+            
+            if (window[key]) {
+                window[key].destroy();
+                window[key] = null;
+            }
+
+            if (Object.keys(data).length === 0) {
+                container.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📊</div><div class="empty-state-title">No expenses yet</div><div class="empty-state-text">Log expenses to see breakdown</div></div>';
+                return;
+            }
+
+            // Rebuild canvas
+            container.innerHTML = `<canvas id="${canvasId}"></canvas>`;
+            const ctx = document.getElementById(canvasId);
+
+            window[key] = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(data),
+                    datasets: [{
+                        data: Object.values(data),
+                        backgroundColor: Object.keys(data).map(name => 
+                            app.settings.expenseCategories.find(c => c.name === name)?.color || '#999'
+                        ),
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+                        y: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        function renderQuarterHeatmap() {
+            const grid = document.getElementById('quarterHeatmap');
+            const monthsEl = document.getElementById('qhMonths');
+            if (!grid) return;
+
+            // Last 91 days = 13 weeks. Build grid with Sunday=row 0.
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const start = new Date(today);
+            start.setDate(start.getDate() - 90);
+            // Roll start back to Sunday of that week
+            start.setDate(start.getDate() - start.getDay());
+
+            // Group income by date string
+            const byDay = {};
+            app.transactions.filter(t => t.type === 'income').forEach(t => {
+                byDay[t.date] = (byDay[t.date] || 0) + t.amount;
+            });
+
+            // Find max for scaling
+            const values = Object.values(byDay).filter(v => {
+                // Only consider values in the visible window
+                return true;
+            });
+            const max = Math.max(...Object.values(byDay), 1);
+
+            // Build 13 weeks × 7 days
+            let html = '';
+            const monthLabels = [];
+            let lastMonth = -1;
+            for (let week = 0; week < 13; week++) {
+                for (let day = 0; day < 7; day++) {
+                    const cellDate = new Date(start);
+                    cellDate.setDate(start.getDate() + week * 7 + day);
+                    if (cellDate > today) {
+                        html += '<div class="qh-cell empty"></div>';
+                        continue;
+                    }
+                    const y = cellDate.getFullYear();
+                    const m = String(cellDate.getMonth() + 1).padStart(2, '0');
+                    const d = String(cellDate.getDate()).padStart(2, '0');
+                    const dateStr = `${y}-${m}-${d}`;
+                    const amount = byDay[dateStr] || 0;
+                    let level = '';
+                    if (amount > 0) {
+                        const pct = amount / max;
+                        if (pct > 0.75) level = 'l4';
+                        else if (pct > 0.5) level = 'l3';
+                        else if (pct > 0.25) level = 'l2';
+                        else level = 'l1';
+                    }
+                    html += `<div class="qh-cell ${level}" title="${cellDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}: ${formatCurrency(amount)}"></div>`;
+
+                    // Track first day of each month for labels
+                    if (day === 0 && cellDate.getMonth() !== lastMonth) {
+                        monthLabels.push(cellDate.toLocaleDateString('en-US', { month: 'short' }));
+                        lastMonth = cellDate.getMonth();
+                    }
+                }
+            }
+            grid.innerHTML = html;
+            // Show unique months only
+            const uniq = [...new Set(monthLabels)];
+            monthsEl.innerHTML = uniq.map(m => `<span>${m}</span>`).join('');
+        }
+
+        function renderOverviewGoals() {
+            const container = document.getElementById('overviewGoals');
+            if (!container) return;
+
+            const { start, end } = getMonthRange();
+            const monthIncome = getTransInRange(start, end).filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+            const ef = getEFAmount();
+            const debt = getTotalDebt();
+
+            const incomePct = Math.min(100, Math.round((monthIncome / app.settings.incomeGoal) * 100));
+            const efPct = Math.min(100, Math.round((ef / app.settings.efGoal) * 100));
+            const debtPct = app.settings.debtGoal > 0 ? Math.max(0, Math.min(100, Math.round(((app.settings.debtGoal - debt) / app.settings.debtGoal) * 100))) : 0;
+
+            const ring = (pct, color) => {
+                const r = 18, c = 2 * Math.PI * r;
+                const offset = c - (pct / 100) * c;
+                return `
+                    <div class="goal-ring">
+                        <svg width="44" height="44" viewBox="0 0 44 44">
+                            <circle cx="22" cy="22" r="${r}" fill="none" stroke="#e4e4e7" stroke-width="3"/>
+                            <circle cx="22" cy="22" r="${r}" fill="none" stroke="${color}" stroke-width="3"
+                                stroke-dasharray="${c}" stroke-dashoffset="${offset}"
+                                stroke-linecap="round" transform="rotate(-90 22 22)"/>
+                        </svg>
+                        <div class="goal-ring-text">${pct}%</div>
+                    </div>
+                `;
+            };
+
+            container.innerHTML = `
+                <div class="goal-row">
+                    <div class="goal-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M3 17l6-6 4 4 8-8M14 7h7v7"/></svg></div>
+                    <div class="goal-info">
+                        <div class="goal-name">Monthly income</div>
+                        <div class="goal-detail">${formatCurrency(monthIncome)} of ${formatCurrency(app.settings.incomeGoal)}</div>
+                    </div>
+                    ${ring(incomePct, '#22c55e')}
+                </div>
+                <div class="goal-row">
+                    <div class="goal-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M12 22s8-4 8-12V5l-8-3-8 3v5c0 8 8 12 8 12z"/></svg></div>
+                    <div class="goal-info">
+                        <div class="goal-name">Emergency fund</div>
+                        <div class="goal-detail">${formatCurrency(ef)} of ${formatCurrency(app.settings.efGoal)}</div>
+                    </div>
+                    ${ring(efPct, '#f59e0b')}
+                </div>
+                <div class="goal-row">
+                    <div class="goal-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/></svg></div>
+                    <div class="goal-info">
+                        <div class="goal-name">Debt payoff</div>
+                        <div class="goal-detail">${formatCurrency(debt)} remaining</div>
+                    </div>
+                    ${ring(debtPct, '#22c55e')}
+                </div>
+            `;
+        }
+
+        function updateGreeting() {
+            const hour = new Date().getHours();
+            let timeOfDay = 'evening';
+            if (hour < 12) timeOfDay = 'morning';
+            else if (hour < 18) timeOfDay = 'afternoon';
+            const g = document.getElementById('greeting');
+            if (g) g.textContent = `Good ${timeOfDay}, Andres`;
+            const dt = document.getElementById('dateText');
+            if (dt) dt.textContent = new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+        }
+
+        function renderInsights() {
+            const m = getMonthlyMetrics();
+            const debt = getTotalDebt();
+            const ef = getEFAmount();
+            const insights = [];
+
+            if (m.flow >= 500) {
+                insights.push({ icon: '✓', color: 'green', title: 'Cash flow positive', text: `You're netting ${formatCurrency(m.flow)} this month. Channel the surplus toward debt or emergency fund.` });
+            } else if (m.flow > 0) {
+                insights.push({ icon: '→', color: 'amber', title: 'Slim margins', text: `Cash flow is positive but only ${formatCurrency(m.flow)}. Push toward +$500/mo to gain breathing room.` });
+            } else if (m.flow < 0) {
+                insights.push({ icon: '⚠', color: 'red', title: 'Spending exceeds income', text: `You're ${formatCurrency(Math.abs(m.flow))} short this month. Cut expenses or grow income immediately.` });
+            }
+
+            if (debt > 0) {
+                const highest = [...app.settings.debts].sort((a, b) => (b.apr || 0) - (a.apr || 0))[0];
+                if (highest && highest.balance > 0) {
+                    insights.push({ icon: '🎯', color: 'blue', title: 'Avalanche target', text: `Pay down ${highest.name} first (${highest.apr}% APR, ${formatCurrency(highest.balance)} balance).` });
+                }
+            }
+
+            const efPct = Math.round((ef / app.settings.efGoal) * 100);
+            if (efPct < 50) {
+                insights.push({ icon: '🛡', color: 'amber', title: 'Build emergency fund', text: `You have ${formatCurrency(ef)} saved (${efPct}% of $${app.settings.efGoal}). Aim to hit 50% first.` });
+            } else if (efPct >= 100) {
+                insights.push({ icon: '✓', color: 'green', title: 'EF complete', text: `Emergency fund is fully funded. Focus on debt or investing next.` });
+            }
+
+            if (m.income >= app.settings.incomeGoal) {
+                insights.push({ icon: '📈', color: 'green', title: 'Income goal hit', text: `You've reached your monthly income target of ${formatCurrency(app.settings.incomeGoal)}.` });
+            } else if (m.income > 0) {
+                const remain = app.settings.incomeGoal - m.income;
+                insights.push({ icon: '📈', color: 'blue', title: 'Income progress', text: `${formatCurrency(remain)} away from your monthly target.` });
+            }
+
+            const container = document.getElementById('insightsContainer');
+            container.innerHTML = insights.length === 0 
+                ? '<div class="empty-state"><div class="empty-state-icon">💡</div><div class="empty-state-title">No insights yet</div><div class="empty-state-text">Log transactions to see recommendations</div></div>'
+                : insights.map(i => `
+                    <div class="insight-card">
+                        <div class="insight-icon ${i.color}">${i.icon}</div>
+                        <div>
+                            <div class="insight-title">${i.title}</div>
+                            <div class="insight-text">${i.text}</div>
+                        </div>
+                    </div>
+                `).join('');
+        }
+
+        // ============ TRANSACTIONS ============
+        function openTransactionModal(id = null) {
+            const modal = document.getElementById('transactionModal');
+            const title = document.getElementById('transactionModalTitle');
+            const idField = document.getElementById('editingTransactionId');
+
+            populateTransactionSelects();
+
+            if (id) {
+                const t = app.transactions.find(x => x.id === id);
+                if (t) {
+                    title.textContent = 'Edit Transaction';
+                    idField.value = id;
+                    document.getElementById('transDate').value = t.date;
+                    document.getElementById('transType').value = t.type;
+                    updateTransactionSourceOptions();
+                    document.getElementById('transSource').value = t.sourceId;
+                    document.getElementById('transAmount').value = t.amount;
+                    document.getElementById('transAccount').value = t.accountId;
+                    document.getElementById('transDesc').value = t.description || '';
+                }
+            } else {
+                title.textContent = 'Log Transaction';
+                idField.value = '';
+                document.getElementById('transDate').value = todayLocalISO();
+                document.getElementById('transType').value = 'income';
+                updateTransactionSourceOptions();
+                document.getElementById('transAmount').value = '';
+                document.getElementById('transDesc').value = '';
+            }
+            modal.classList.add('show');
+        }
+
+        function populateTransactionSelects() {
+            const acc = document.getElementById('transAccount');
+            acc.innerHTML = app.settings.accounts.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+            updateTransactionSourceOptions();
+        }
+
+        function updateTransactionSourceOptions() {
+            const type = document.getElementById('transType').value;
+            const src = document.getElementById('transSource');
+            const label = document.getElementById('transSourceLabel');
+            if (type === 'income') {
+                label.textContent = 'Source';
+                src.innerHTML = app.settings.incomeSources.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+            } else {
+                label.textContent = 'Category';
+                src.innerHTML = app.settings.expenseCategories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            }
+        }
+
+        async function saveTransaction() {
+            const id = document.getElementById('editingTransactionId').value;
+            const date = document.getElementById('transDate').value;
+            const type = document.getElementById('transType').value;
+            const sourceId = parseInt(document.getElementById('transSource').value);
+            const amount = parseFloat(document.getElementById('transAmount').value);
+            const accountId = parseInt(document.getElementById('transAccount').value);
+            const description = document.getElementById('transDesc').value;
+
+            if (!date || !amount || amount <= 0) {
+                toast('❌ Fill in date and amount');
+                return;
+            }
+
+            try {
+                if (id) {
+                    const old = app.transactions.find(x => x.id === parseInt(id));
+                    // Reverse old account effect
+                    if (old) {
+                        const oldAcc = app.settings.accounts.find(a => a.id === old.accountId);
+                        if (oldAcc) {
+                            oldAcc.balance += old.type === 'income' ? -old.amount : old.amount;
+                            await sb.from('accounts').update({ balance: oldAcc.balance }).eq('id', oldAcc.id);
+                        }
+                    }
+                    const { data, error } = await sb.from('transactions')
+                        .update({ date, type, source_id: sourceId, account_id: accountId, amount, description })
+                        .eq('id', parseInt(id)).select().single();
+                    if (error) throw error;
+                    if (old) Object.assign(old, mapTransFromDb(data));
+                } else {
+                    const { data, error } = await sb.from('transactions')
+                        .insert({ user_id: USER_ID, date, type, source_id: sourceId, account_id: accountId, amount, description })
+                        .select().single();
+                    if (error) throw error;
+                    app.transactions.unshift(mapTransFromDb(data));
+                }
+
+                // Apply new account effect
+                const acc = app.settings.accounts.find(a => a.id === accountId);
+                if (acc) {
+                    acc.balance += type === 'income' ? amount : -amount;
+                    await sb.from('accounts').update({ balance: acc.balance }).eq('id', acc.id);
+                }
+
+                closeModal('transactionModal');
+                toast(id ? '✓ Transaction updated' : '✓ Transaction logged');
+                updateOverview();
+                renderTransactionTable();
+            } catch (e) {
+                toast('❌ ' + e.message);
+                console.error(e);
+            }
+        }
+
+        async function deleteTransaction(id) {
+            if (!confirm('Delete this transaction?')) return;
+            const t = app.transactions.find(x => x.id === id);
+            try {
+                if (t) {
+                    const acc = app.settings.accounts.find(a => a.id === t.accountId);
+                    if (acc) {
+                        acc.balance += t.type === 'income' ? -t.amount : t.amount;
+                        await sb.from('accounts').update({ balance: acc.balance }).eq('id', acc.id);
+                    }
+                }
+                const { error } = await sb.from('transactions').delete().eq('id', id);
+                if (error) throw error;
+                app.transactions = app.transactions.filter(x => x.id !== id);
+                toast('✓ Deleted');
+                updateOverview();
+                renderTransactionTable();
+            } catch (e) {
+                toast('❌ ' + e.message);
+                console.error(e);
+            }
+        }
+
+        function renderTransactionTable() {
+            const search = document.getElementById('transactionSearch')?.value.toLowerCase() || '';
+            const filter = document.getElementById('transactionFilter')?.value || 'all';
+
+            let trans = app.transactions.slice().reverse();
+            if (filter !== 'all') trans = trans.filter(t => t.type === filter);
+            if (search) {
+                trans = trans.filter(t => {
+                    const label = t.type === 'income' 
+                        ? app.settings.incomeSources.find(s => s.id === t.sourceId)?.name 
+                        : app.settings.expenseCategories.find(c => c.id === t.sourceId)?.name;
+                    return (label || '').toLowerCase().includes(search) || (t.description || '').toLowerCase().includes(search);
+                });
+            }
+
+            const tbody = document.getElementById('transactionBody');
+            if (trans.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 40px; color: var(--text-secondary);">No transactions found</td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = trans.map(t => {
+                const label = t.type === 'income' 
+                    ? app.settings.incomeSources.find(s => s.id === t.sourceId)?.name || 'Unknown'
+                    : app.settings.expenseCategories.find(c => c.id === t.sourceId)?.name || 'Unknown';
+                const acc = app.settings.accounts.find(a => a.id === t.accountId)?.name || '—';
+                return `
+                    <tr>
+                        <td>${parseLocalDate(t.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</td>
+                        <td>${t.description || '<span style="color: var(--text-tertiary);">—</span>'}</td>
+                        <td>${label}</td>
+                        <td><span class="badge ${t.type === 'income' ? 'badge-success' : 'badge-danger'}">${t.type}</span></td>
+                        <td style="color: ${t.type === 'income' ? 'var(--success)' : 'var(--danger)'}; font-weight: 600;">${t.type === 'income' ? '+' : '-'}${formatCurrency(t.amount)}</td>
+                        <td>${acc}</td>
+                        <td>
+                            <button class="btn btn-sm" onclick="openTransactionModal(${t.id})">Edit</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteTransaction(${t.id})">×</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // ============ ACCOUNTS ============
+        function updateAccountsPage() {
+            const totalCash = getCashAvailable();
+            const totalCredit = app.settings.accounts.filter(a => a.type === 'credit').reduce((s, a) => s + (a.balance || 0), 0);
+            const totalSavings = app.settings.accounts.filter(a => a.type === 'savings').reduce((s, a) => s + (a.balance || 0), 0);
+
+            document.getElementById('accountStats').innerHTML = `
+                <div class="stat-item">
+                    <div class="stat-label">Cash Available</div>
+                    <div class="stat-value">${formatCurrency(totalCash)}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Savings</div>
+                    <div class="stat-value">${formatCurrency(totalSavings)}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Credit Balances</div>
+                    <div class="stat-value">${formatCurrency(totalCredit)}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Accounts</div>
+                    <div class="stat-value">${app.settings.accounts.length}</div>
+                </div>
+            `;
+
+            const colors = { checking: '#3b82f6', savings: '#10b981', credit: '#ef4444', debit: '#8b5cf6' };
+            const icons = { checking: '🏦', savings: '💰', credit: '💳', debit: '💵' };
+
+            const list = document.getElementById('accountsList');
+            if (app.settings.accounts.length === 0) {
+                list.innerHTML = '<div class="empty-state" style="grid-column: 1/-1;"><div class="empty-state-icon">🏦</div><div class="empty-state-title">No accounts yet</div><div class="empty-state-text">Add your first account to get started</div></div>';
+                return;
+            }
+
+            list.innerHTML = app.settings.accounts.map(a => `
+                <div class="account-card">
+                    <div class="account-icon" style="background: ${colors[a.type] || '#999'}20; color: ${colors[a.type] || '#999'};">${icons[a.type] || '💼'}</div>
+                    <div class="account-name">${a.name}</div>
+                    <div class="account-type">${a.type}</div>
+                    <div class="account-balance" style="color: ${a.type === 'credit' ? 'var(--danger)' : 'var(--text-primary)'};">${formatCurrency(a.balance)}</div>
+                    <div class="account-actions">
+                        <button class="btn btn-sm" onclick="openAccountModal(${a.id})">Edit</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteAccount(${a.id})">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function openAccountModal(id = null) {
+            const idField = document.getElementById('editingAccountId');
+            if (id) {
+                const a = app.settings.accounts.find(x => x.id === id);
+                if (a) {
+                    document.getElementById('accountModalTitle').textContent = 'Edit Account';
+                    idField.value = id;
+                    document.getElementById('accountName').value = a.name;
+                    document.getElementById('accountType').value = a.type;
+                    document.getElementById('accountBalance').value = a.balance;
+                }
+            } else {
+                document.getElementById('accountModalTitle').textContent = 'Add Account';
+                idField.value = '';
+                document.getElementById('accountName').value = '';
+                document.getElementById('accountBalance').value = '';
+            }
+            document.getElementById('accountModal').classList.add('show');
+        }
+
+        async function saveAccount() {
+            const id = document.getElementById('editingAccountId').value;
+            const name = document.getElementById('accountName').value;
+            const type = document.getElementById('accountType').value;
+            const balance = parseFloat(document.getElementById('accountBalance').value) || 0;
+
+            if (!name) { toast('❌ Name required'); return; }
+
+            try {
+                if (id) {
+                    const { data, error } = await sb.from('accounts').update({ name, type, balance }).eq('id', parseInt(id)).select().single();
+                    if (error) throw error;
+                    const a = app.settings.accounts.find(x => x.id === parseInt(id));
+                    if (a) Object.assign(a, mapAccountFromDb(data));
+                } else {
+                    const { data, error } = await sb.from('accounts').insert({ user_id: USER_ID, name, type, balance }).select().single();
+                    if (error) throw error;
+                    app.settings.accounts.push(mapAccountFromDb(data));
+                }
+
+                closeModal('accountModal');
+                toast(id ? '✓ Account updated' : '✓ Account added');
+                updateAccountsPage();
+                updateOverview();
+            } catch (e) {
+                toast('❌ ' + e.message);
+                console.error(e);
+            }
+        }
+
+        async function deleteAccount(id) {
+            if (!confirm('Delete this account?')) return;
+            try {
+                const { error } = await sb.from('accounts').delete().eq('id', id);
+                if (error) throw error;
+                app.settings.accounts = app.settings.accounts.filter(a => a.id !== id);
+                toast('✓ Deleted');
+                updateAccountsPage();
+                updateOverview();
+            } catch (e) {
+                toast('❌ ' + e.message);
+                console.error(e);
+            }
+        }
+
+        // ============ REVENUE ============
+        function updateRevenuePage() {
+            const { start, end } = getMonthRange();
+            const monthIncome = getTransInRange(start, end).filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+
+            const lastMonthStart = new Date(start.getFullYear(), start.getMonth() - 1, 1);
+            const lastMonthEnd = new Date(start.getFullYear(), start.getMonth(), 0, 23, 59, 59);
+            const lastMonthIncome = getTransInRange(lastMonthStart, lastMonthEnd).filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+
+            const allIncome = app.transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+
+            const sourceTotals = {};
+            getTransInRange(start, end).filter(t => t.type === 'income').forEach(t => {
+                const s = app.settings.incomeSources.find(x => x.id === t.sourceId);
+                if (s) sourceTotals[s.name] = (sourceTotals[s.name] || 0) + t.amount;
+            });
+
+            const topSource = Object.entries(sourceTotals).sort((a, b) => b[1] - a[1])[0];
+            const change = lastMonthIncome > 0 ? Math.round(((monthIncome - lastMonthIncome) / lastMonthIncome) * 100) : 0;
+
+            document.getElementById('revenueStats').innerHTML = `
+                <div class="stat-item">
+                    <div class="stat-label">This Month</div>
+                    <div class="stat-value">${formatCurrency(monthIncome)}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Last Month</div>
+                    <div class="stat-value">${formatCurrency(lastMonthIncome)}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">MoM Change</div>
+                    <div class="stat-value" style="color: ${change >= 0 ? 'var(--success)' : 'var(--danger)'};">${change > 0 ? '+' : ''}${change}%</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Top Source</div>
+                    <div class="stat-value" style="font-size: 16px;">${topSource ? topSource[0] : '—'}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">All-Time</div>
+                    <div class="stat-value">${formatCurrency(allIncome)}</div>
+                </div>
+            `;
+
+            // Time chart - last 90 days
+            const labels = [];
+            const data = [];
+            for (let i = 89; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                d.setHours(0, 0, 0, 0);
+                const next = new Date(d);
+                next.setDate(next.getDate() + 1);
+                labels.push(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                data.push(getTransInDayBucket(d, next).filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0));
+            }
+
+            if (window.revTimeInst) window.revTimeInst.destroy();
+            window.revTimeInst = new Chart(document.getElementById('revenueTimeChart'), {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Daily Income',
+                        data,
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16,185,129,0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0,
+                        pointRadius: 2
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { maxTicksLimit: 10 }, grid: { display: false } },
+                        y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } }
+                    }
+                }
+            });
+
+            // Source chart
+            if (window.revSourceInst) {
+                window.revSourceInst.destroy();
+                window.revSourceInst = null;
+            }
+            const sCanvas = document.getElementById('revenueSourceChart');
+            const sContainer = sCanvas ? sCanvas.closest('.chart-container') : document.querySelector('#revenue .chart-container:nth-of-type(2)');
+            
+            if (Object.keys(sourceTotals).length === 0) {
+                if (sContainer) sContainer.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📊</div><div class="empty-state-title">No data</div></div>';
+            } else {
+                if (sContainer) sContainer.innerHTML = '<canvas id="revenueSourceChart"></canvas>';
+                const sCtx = document.getElementById('revenueSourceChart');
+                window.revSourceInst = new Chart(sCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(sourceTotals),
+                        datasets: [{
+                            data: Object.values(sourceTotals),
+                            backgroundColor: Object.keys(sourceTotals).map(name => 
+                                app.settings.incomeSources.find(s => s.name === name)?.color || '#999'
+                            ),
+                            borderWidth: 2,
+                            borderColor: '#fff'
+                        }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false, cutout: '65%',
+                        plugins: { legend: { position: 'bottom' } }
+                    }
+                });
+            }
+
+            // Source list
+            const total = Object.values(sourceTotals).reduce((s, v) => s + v, 0);
+            document.getElementById('revenueSourceList').innerHTML = Object.entries(sourceTotals).length === 0
+                ? '<div class="empty-state"><div class="empty-state-text">No income this month</div></div>'
+                : Object.entries(sourceTotals).sort((a, b) => b[1] - a[1]).map(([name, amount]) => {
+                    const pct = Math.round((amount / total) * 100);
+                    const source = app.settings.incomeSources.find(s => s.name === name);
+                    return `
+                        <div style="padding: 12px 0; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div class="color-dot" style="background: ${source?.color || '#999'};"></div>
+                                <div>
+                                    <div style="font-weight: 600; font-size: 14px;">${name}</div>
+                                    <div style="font-size: 12px; color: var(--text-secondary);">${pct}% of total</div>
+                                </div>
+                            </div>
+                            <div style="font-weight: 700; font-size: 16px;">${formatCurrency(amount)}</div>
+                        </div>
+                    `;
+                }).join('');
+        }
+
+        // ============ EXPENSES ============
+        function updateExpensesPage() {
+            const { start, end } = getMonthRange();
+            const monthExp = getTransInRange(start, end).filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+
+            const lastMonthStart = new Date(start.getFullYear(), start.getMonth() - 1, 1);
+            const lastMonthEnd = new Date(start.getFullYear(), start.getMonth(), 0, 23, 59, 59);
+            const lastMonthExp = getTransInRange(lastMonthStart, lastMonthEnd).filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+
+            const allExp = app.transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+
+            const catTotals = {};
+            getTransInRange(start, end).filter(t => t.type === 'expense').forEach(t => {
+                const c = app.settings.expenseCategories.find(x => x.id === t.sourceId);
+                if (c) catTotals[c.name] = (catTotals[c.name] || 0) + t.amount;
+            });
+
+            const topCat = Object.entries(catTotals).sort((a, b) => b[1] - a[1])[0];
+            const change = lastMonthExp > 0 ? Math.round(((monthExp - lastMonthExp) / lastMonthExp) * 100) : 0;
+
+            document.getElementById('expenseStats').innerHTML = `
+                <div class="stat-item">
+                    <div class="stat-label">This Month</div>
+                    <div class="stat-value">${formatCurrency(monthExp)}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Last Month</div>
+                    <div class="stat-value">${formatCurrency(lastMonthExp)}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">MoM Change</div>
+                    <div class="stat-value" style="color: ${change <= 0 ? 'var(--success)' : 'var(--danger)'};">${change > 0 ? '+' : ''}${change}%</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Top Category</div>
+                    <div class="stat-value" style="font-size: 16px;">${topCat ? topCat[0] : '—'}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">All-Time</div>
+                    <div class="stat-value">${formatCurrency(allExp)}</div>
+                </div>
+            `;
+
+            // Time chart
+            const labels = [];
+            const data = [];
+            for (let i = 89; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                d.setHours(0, 0, 0, 0);
+                const next = new Date(d);
+                next.setDate(next.getDate() + 1);
+                labels.push(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                data.push(getTransInDayBucket(d, next).filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0));
+            }
+
+            if (window.expTimeInst) window.expTimeInst.destroy();
+            window.expTimeInst = new Chart(document.getElementById('expenseTimeChart'), {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Daily Expenses',
+                        data,
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239,68,68,0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0,
+                        pointRadius: 2
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { maxTicksLimit: 10 }, grid: { display: false } },
+                        y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } }
+                    }
+                }
+            });
+
+            // Category chart
+            renderExpenseCategoryChart('expensesCategoryChart');
+
+            // Category list
+            const total = Object.values(catTotals).reduce((s, v) => s + v, 0);
+            document.getElementById('expenseCategoryList').innerHTML = Object.entries(catTotals).length === 0
+                ? '<div class="empty-state"><div class="empty-state-text">No expenses this month</div></div>'
+                : Object.entries(catTotals).sort((a, b) => b[1] - a[1]).map(([name, amount]) => {
+                    const pct = Math.round((amount / total) * 100);
+                    const cat = app.settings.expenseCategories.find(c => c.name === name);
+                    return `
+                        <div style="padding: 12px 0; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                            <div style="display: flex; align-items: center; gap: 12px;">
+                                <div class="color-dot" style="background: ${cat?.color || '#999'};"></div>
+                                <div>
+                                    <div style="font-weight: 600; font-size: 14px;">${name}</div>
+                                    <div style="font-size: 12px; color: var(--text-secondary);">${pct}% of total</div>
+                                </div>
+                            </div>
+                            <div style="font-weight: 700; font-size: 16px;">${formatCurrency(amount)}</div>
+                        </div>
+                    `;
+                }).join('');
+        }
+
+        // ============ DEBT ============
+        function updateDebtPage() {
+            const debts = app.settings.debts || [];
+            const total = debts.reduce((s, d) => s + (d.balance || 0), 0);
+            const totalMin = debts.reduce((s, d) => s + (d.minPayment || 0), 0);
+            const avgAPR = debts.length > 0 ? debts.reduce((s, d) => s + (d.apr || 0), 0) / debts.length : 0;
+            const highestAPR = [...debts].sort((a, b) => (b.apr || 0) - (a.apr || 0))[0];
+
+            document.getElementById('debtStats').innerHTML = `
+                <div class="stat-item">
+                    <div class="stat-label">Total Debt</div>
+                    <div class="stat-value">${formatCurrency(total)}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Monthly Minimums</div>
+                    <div class="stat-value">${formatCurrency(totalMin)}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Average APR</div>
+                    <div class="stat-value">${avgAPR.toFixed(1)}%</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Highest APR</div>
+                    <div class="stat-value" style="font-size: 16px;">${highestAPR ? highestAPR.name + ' (' + highestAPR.apr + '%)' : '—'}</div>
+                </div>
+            `;
+
+            // Chart
+            const sorted = [...debts].filter(d => d.balance > 0).sort((a, b) => (b.apr || 0) - (a.apr || 0));
+            if (window.debtChartInst) {
+                window.debtChartInst.destroy();
+                window.debtChartInst = null;
+            }
+            const dCanvas = document.getElementById('debtChart');
+            const dContainer = dCanvas ? dCanvas.closest('.chart-container') : null;
+            
+            if (sorted.length === 0) {
+                if (dContainer) dContainer.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💳</div><div class="empty-state-title">No debts tracked</div><div class="empty-state-text">Add a debt to start the avalanche method</div></div>';
+            } else {
+                if (dContainer) dContainer.innerHTML = '<canvas id="debtChart"></canvas>';
+                const ctx = document.getElementById('debtChart');
+                window.debtChartInst = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: sorted.map(d => d.name),
+                        datasets: [{
+                            label: 'Balance',
+                            data: sorted.map(d => d.balance),
+                            backgroundColor: sorted.map((d, i) => {
+                                const intensity = 1 - (i / sorted.length) * 0.6;
+                                return `rgba(239,68,68,${intensity})`;
+                            }),
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        indexAxis: 'y',
+                        responsive: true, maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            x: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.05)' } },
+                            y: { grid: { display: false } }
+                        }
+                    }
+                });
+            }
+
+            // List
+            const list = document.getElementById('debtList');
+            if (debts.length === 0) {
+                list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💳</div><div class="empty-state-title">No debts yet</div><div class="empty-state-text">Click + Add Debt to track credit cards and loans</div></div>';
+            } else {
+                list.innerHTML = sorted.map((d, i) => `
+                    <div class="debt-row">
+                        <div>
+                            <div class="debt-name">${d.name}</div>
+                            ${i === 0 ? '<span class="badge badge-blue" style="margin-top: 4px; display: inline-block;">Avalanche target</span>' : ''}
+                        </div>
+                        <div>
+                            <div class="debt-detail-label">Balance</div>
+                            <div class="debt-detail" style="color: var(--danger); font-weight: 600;">${formatCurrency(d.balance)}</div>
+                        </div>
+                        <div>
+                            <div class="debt-detail-label">APR</div>
+                            <div class="debt-detail">${d.apr}%</div>
+                        </div>
+                        <div>
+                            <div class="debt-detail-label">Min Pay</div>
+                            <div class="debt-detail">${formatCurrency(d.minPayment)}</div>
+                        </div>
+                        <div style="display: flex; gap: 6px;">
+                            <button class="btn btn-sm" onclick="openDebtModal(${d.id})">Edit</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteDebt(${d.id})">×</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        }
+
+        function openDebtModal(id = null) {
+            const idField = document.getElementById('editingDebtId');
+            if (id) {
+                const d = app.settings.debts.find(x => x.id === id);
+                if (d) {
+                    document.getElementById('debtModalTitle').textContent = 'Edit Debt';
+                    idField.value = id;
+                    document.getElementById('debtName').value = d.name;
+                    document.getElementById('debtBalance').value = d.balance;
+                    document.getElementById('debtAPR').value = d.apr;
+                    document.getElementById('debtMin').value = d.minPayment;
+                }
+            } else {
+                document.getElementById('debtModalTitle').textContent = 'Add Debt';
+                idField.value = '';
+                document.getElementById('debtName').value = '';
+                document.getElementById('debtBalance').value = '';
+                document.getElementById('debtAPR').value = '';
+                document.getElementById('debtMin').value = '';
+            }
+            document.getElementById('debtModal').classList.add('show');
+        }
+
+        async function saveDebt() {
+            const id = document.getElementById('editingDebtId').value;
+            const name = document.getElementById('debtName').value;
+            const balance = parseFloat(document.getElementById('debtBalance').value) || 0;
+            const apr = parseFloat(document.getElementById('debtAPR').value) || 0;
+            const minPayment = parseFloat(document.getElementById('debtMin').value) || 0;
+
+            if (!name) { toast('❌ Name required'); return; }
+
+            try {
+                if (id) {
+                    const { data, error } = await sb.from('debts')
+                        .update({ name, balance, apr, min_payment: minPayment })
+                        .eq('id', parseInt(id)).select().single();
+                    if (error) throw error;
+                    const d = app.settings.debts.find(x => x.id === parseInt(id));
+                    if (d) Object.assign(d, mapDebtFromDb(data));
+                } else {
+                    const { data, error } = await sb.from('debts')
+                        .insert({ user_id: USER_ID, name, balance, apr, min_payment: minPayment })
+                        .select().single();
+                    if (error) throw error;
+                    app.settings.debts.push(mapDebtFromDb(data));
+                }
+
+                closeModal('debtModal');
+                toast(id ? '✓ Debt updated' : '✓ Debt added');
+                updateDebtPage();
+                updateOverview();
+            } catch (e) {
+                toast('❌ ' + e.message);
+                console.error(e);
+            }
+        }
+
+        async function deleteDebt(id) {
+            if (!confirm('Delete this debt?')) return;
+            try {
+                const { error } = await sb.from('debts').delete().eq('id', id);
+                if (error) throw error;
+                app.settings.debts = app.settings.debts.filter(d => d.id !== id);
+                toast('✓ Deleted');
+                updateDebtPage();
+                updateOverview();
+            } catch (e) {
+                toast('❌ ' + e.message);
+                console.error(e);
+            }
+        }
+
+        // ============ FORECASTING ============
+        function setForecastPeriod(el, days) {
+            document.querySelectorAll('#forecasting .period-tab').forEach(t => t.classList.remove('active'));
+            el.classList.add('active');
+            app.forecastPeriod = days;
+            updateForecastPage();
+        }
+
+        function updateForecastPage() {
+            // Calculate average daily income & expense from last 60 days
+            const lookback = 60;
+            const today = new Date();
+            const start = new Date(today);
+            start.setDate(start.getDate() - lookback);
+            start.setHours(0, 0, 0, 0);
+
+            const recent = getTransInRange(start, today);
+            const totalIncome = recent.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+            const totalExpense = recent.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+            const dailyIncome = totalIncome / lookback;
+            const dailyExpense = totalExpense / lookback;
+            const dailyNet = dailyIncome - dailyExpense;
+
+            const days = app.forecastPeriod;
+            const projectedIncome = dailyIncome * days;
+            const projectedExpense = dailyExpense * days;
+            const projectedNet = projectedIncome - projectedExpense;
+            const cash = getCashAvailable();
+            const projectedCash = cash + projectedNet;
+
+            document.getElementById('forecastStats').innerHTML = `
+                <div class="stat-item">
+                    <div class="stat-label">${days}-Day Income</div>
+                    <div class="stat-value" style="color: var(--success);">${formatCurrency(projectedIncome)}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">${days}-Day Expenses</div>
+                    <div class="stat-value" style="color: var(--danger);">${formatCurrency(projectedExpense)}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">${days}-Day Net</div>
+                    <div class="stat-value" style="color: ${projectedNet >= 0 ? 'var(--success)' : 'var(--danger)'};">${formatCurrency(projectedNet)}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Projected Cash</div>
+                    <div class="stat-value">${formatCurrency(projectedCash)}</div>
+                </div>
+            `;
+
+            // Build forecast chart - historical 30 days + projected
+            const labels = [];
+            const historicalCash = [];
+            const projectedCashArr = [];
+
+            // Historical
+            let runningCash = cash - (dailyNet * 30); // approximate starting cash 30d ago
+            for (let i = 29; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                d.setHours(0, 0, 0, 0);
+                const next = new Date(d);
+                next.setDate(next.getDate() + 1);
+                const dayTrans = getTransInDayBucket(d, next);
+                const dayIncome = dayTrans.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+                const dayExpense = dayTrans.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
+                runningCash += dayIncome - dayExpense;
+                labels.push(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                historicalCash.push(runningCash);
+                projectedCashArr.push(null);
+            }
+
+            // Projected
+            let projCash = cash;
+            for (let i = 1; i <= days; i++) {
+                const d = new Date();
+                d.setDate(d.getDate() + i);
+                projCash += dailyNet;
+                labels.push(d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }));
+                historicalCash.push(null);
+                projectedCashArr.push(projCash);
+            }
+
+            // Link the two series
+            historicalCash[29] = cash;
+            projectedCashArr[29] = cash;
+
+            const ctx = document.getElementById('forecastChart');
+            if (window.forecastInst) window.forecastInst.destroy();
+            window.forecastInst = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            label: 'Historical Cash',
+                            data: historicalCash,
+                            borderColor: '#3b82f6',
+                            backgroundColor: 'rgba(59,130,246,0.1)',
+                            borderWidth: 2,
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 0
+                        },
+                        {
+                            label: 'Projected Cash',
+                            data: projectedCashArr,
+                            borderColor: '#8b5cf6',
+                            backgroundColor: 'rgba(139,92,246,0.08)',
+                            borderWidth: 2,
+                            borderDash: [5, 5],
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 0
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } },
+                    scales: {
+                        x: { ticks: { maxTicksLimit: 10 }, grid: { display: false } },
+                        y: { grid: { color: 'rgba(0,0,0,0.05)' } }
+                    }
+                }
+            });
+
+            // Forecast insights
+            const insights = [];
+            if (dailyNet > 0) {
+                const debt = getTotalDebt();
+                if (debt > 0) {
+                    const daysToPayoff = Math.ceil(debt / dailyNet);
+                    insights.push({ icon: '🎯', color: 'blue', title: `${daysToPayoff} days to debt-free`, text: `If you maintain current cash flow and apply all surplus to debt, you'd be free in ~${Math.round(daysToPayoff / 30)} months.` });
+                }
+                const ef = getEFAmount();
+                const efRemaining = app.settings.efGoal - ef;
+                if (efRemaining > 0) {
+                    const daysToEF = Math.ceil(efRemaining / dailyNet);
+                    insights.push({ icon: '🛡', color: 'green', title: `${daysToEF} days to full EF`, text: `Hit your $${app.settings.efGoal} emergency fund target by saving the surplus.` });
+                }
+                insights.push({ icon: '📈', color: 'green', title: 'Trajectory positive', text: `Projected to add ${formatCurrency(projectedNet)} over the next ${days} days at current pace.` });
+            } else if (dailyNet < 0) {
+                insights.push({ icon: '⚠', color: 'red', title: 'Cash burning down', text: `At current pace, you'll lose ${formatCurrency(Math.abs(projectedNet))} over the next ${days} days. Cut expenses or boost income now.` });
+                if (cash > 0) {
+                    const daysOfRunway = Math.floor(cash / Math.abs(dailyNet));
+                    insights.push({ icon: '⏱', color: 'amber', title: `${daysOfRunway} days of runway`, text: `You have ${formatCurrency(cash)} in cash. At ${formatCurrency(Math.abs(dailyNet))}/day burn, that lasts ~${daysOfRunway} days.` });
+                }
+            } else {
+                insights.push({ icon: '→', color: 'amber', title: 'Breakeven', text: 'You\'re neither gaining nor losing cash. Push for positive flow to build momentum.' });
+            }
+
+            document.getElementById('forecastInsights').innerHTML = insights.map(i => `
+                <div class="insight-card">
+                    <div class="insight-icon ${i.color}">${i.icon}</div>
+                    <div>
+                        <div class="insight-title">${i.title}</div>
+                        <div class="insight-text">${i.text}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // ============ GOALS ============
+        function updateGoalsPage() {
+            const { start, end } = getMonthRange();
+            const monthIncome = getTransInRange(start, end).filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
+            const ef = getEFAmount();
+            const debt = getTotalDebt();
+
+            const incomePct = Math.min(100, Math.round((monthIncome / app.settings.incomeGoal) * 100));
+            const efPct = Math.min(100, Math.round((ef / app.settings.efGoal) * 100));
+            const debtPct = app.settings.debtGoal > 0 ? Math.max(0, Math.round(((app.settings.debtGoal - debt) / app.settings.debtGoal) * 100)) : 0;
+
+            document.getElementById('goalsList').innerHTML = `
+                <div class="goal-card">
+                    <div class="goal-header">
+                        <div>
+                            <div class="goal-title">Monthly Income</div>
+                            <div class="goal-amount">${formatCurrency(monthIncome)}</div>
+                            <div class="goal-target">of ${formatCurrency(app.settings.incomeGoal)} target</div>
+                        </div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill ${incomePct >= 100 ? 'success' : ''}" style="width: ${incomePct}%;"></div>
+                    </div>
+                    <div class="goal-percent">${incomePct}% of monthly goal</div>
+                </div>
+
+                <div class="goal-card">
+                    <div class="goal-header">
+                        <div>
+                            <div class="goal-title">Emergency Fund</div>
+                            <div class="goal-amount">${formatCurrency(ef)}</div>
+                            <div class="goal-target">of ${formatCurrency(app.settings.efGoal)} target</div>
+                        </div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill ${efPct >= 100 ? 'success' : (efPct >= 50 ? 'warning' : '')}" style="width: ${efPct}%;"></div>
+                    </div>
+                    <div class="goal-percent">${efPct}% saved</div>
+                </div>
+
+                <div class="goal-card">
+                    <div class="goal-header">
+                        <div>
+                            <div class="goal-title">Debt Payoff</div>
+                            <div class="goal-amount">${formatCurrency(debt)}</div>
+                            <div class="goal-target">of ${formatCurrency(app.settings.debtGoal)} starting</div>
+                        </div>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill ${debtPct >= 100 ? 'success' : ''}" style="width: ${debtPct}%;"></div>
+                    </div>
+                    <div class="goal-percent">${debtPct}% paid down</div>
+                </div>
+            `;
+        }
+
+        // ============ SETTINGS ============
+        function updateSettingsPage() {
+            // Sources
+            document.getElementById('sourcesSettings').innerHTML = app.settings.incomeSources.length === 0
+                ? '<div class="empty-state"><div class="empty-state-text">No sources yet. Add one to track income.</div></div>'
+                : app.settings.incomeSources.map(s => `
+                    <div class="settings-item">
+                        <div class="settings-item-info">
+                            <div class="color-dot" style="background: ${s.color};"></div>
+                            <div>
+                                <div class="settings-item-name">${s.name}</div>
+                                <div class="settings-item-meta">${s.color}</div>
+                            </div>
+                        </div>
+                        <div class="settings-item-actions">
+                            <button class="btn btn-sm" onclick="openSourceModal(${s.id})">Edit</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteSource(${s.id})">Delete</button>
+                        </div>
+                    </div>
+                `).join('');
+
+            // Categories
+            document.getElementById('categoriesSettings').innerHTML = app.settings.expenseCategories.length === 0
+                ? '<div class="empty-state"><div class="empty-state-text">No categories yet.</div></div>'
+                : app.settings.expenseCategories.map(c => `
+                    <div class="settings-item">
+                        <div class="settings-item-info">
+                            <div class="color-dot" style="background: ${c.color};"></div>
+                            <div>
+                                <div class="settings-item-name">${c.name}</div>
+                                <div class="settings-item-meta">${c.color}</div>
+                            </div>
+                        </div>
+                        <div class="settings-item-actions">
+                            <button class="btn btn-sm" onclick="openCategoryModal(${c.id})">Edit</button>
+                            <button class="btn btn-sm btn-danger" onclick="deleteCategory(${c.id})">Delete</button>
+                        </div>
+                    </div>
+                `).join('');
+        }
+
+        function openSourceModal(id = null) {
+            const idField = document.getElementById('editingSourceId');
+            if (id) {
+                const s = app.settings.incomeSources.find(x => x.id === id);
+                if (s) {
+                    document.getElementById('sourceModalTitle').textContent = 'Edit Income Source';
+                    idField.value = id;
+                    document.getElementById('sourceName').value = s.name;
+                    document.getElementById('sourceColor').value = s.color;
+                }
+            } else {
+                document.getElementById('sourceModalTitle').textContent = 'Add Income Source';
+                idField.value = '';
+                document.getElementById('sourceName').value = '';
+                document.getElementById('sourceColor').value = '#3b82f6';
+            }
+            document.getElementById('sourceModal').classList.add('show');
+        }
+
+        async function saveSource() {
+            const id = document.getElementById('editingSourceId').value;
+            const name = document.getElementById('sourceName').value;
+            const color = document.getElementById('sourceColor').value;
+
+            if (!name) { toast('❌ Name required'); return; }
+
+            try {
+                if (id) {
+                    const { data, error } = await sb.from('income_sources').update({ name, color }).eq('id', parseInt(id)).select().single();
+                    if (error) throw error;
+                    const s = app.settings.incomeSources.find(x => x.id === parseInt(id));
+                    if (s) Object.assign(s, { name: data.name, color: data.color });
+                } else {
+                    const { data, error } = await sb.from('income_sources').insert({ user_id: USER_ID, name, color }).select().single();
+                    if (error) throw error;
+                    app.settings.incomeSources.push(data);
+                }
+
+                closeModal('sourceModal');
+                toast(id ? '✓ Source updated' : '✓ Source added');
+                updateSettingsPage();
+                updateOverview();
+            } catch (e) {
+                toast('❌ ' + e.message);
+                console.error(e);
+            }
+        }
+
+        async function deleteSource(id) {
+            if (!confirm('Delete this source? Existing transactions will keep their reference.')) return;
+            try {
+                const { error } = await sb.from('income_sources').delete().eq('id', id);
+                if (error) throw error;
+                app.settings.incomeSources = app.settings.incomeSources.filter(s => s.id !== id);
+                toast('✓ Deleted');
+                updateSettingsPage();
+                updateOverview();
+            } catch (e) {
+                toast('❌ ' + e.message);
+                console.error(e);
+            }
+        }
+
+        function openCategoryModal(id = null) {
+            const idField = document.getElementById('editingCategoryId');
+            if (id) {
+                const c = app.settings.expenseCategories.find(x => x.id === id);
+                if (c) {
+                    document.getElementById('categoryModalTitle').textContent = 'Edit Category';
+                    idField.value = id;
+                    document.getElementById('categoryName').value = c.name;
+                    document.getElementById('categoryColor').value = c.color;
+                }
+            } else {
+                document.getElementById('categoryModalTitle').textContent = 'Add Expense Category';
+                idField.value = '';
+                document.getElementById('categoryName').value = '';
+                document.getElementById('categoryColor').value = '#ef4444';
+            }
+            document.getElementById('categoryModal').classList.add('show');
+        }
+
+        async function saveCategory() {
+            const id = document.getElementById('editingCategoryId').value;
+            const name = document.getElementById('categoryName').value;
+            const color = document.getElementById('categoryColor').value;
+
+            if (!name) { toast('❌ Name required'); return; }
+
+            try {
+                if (id) {
+                    const { data, error } = await sb.from('expense_categories').update({ name, color }).eq('id', parseInt(id)).select().single();
+                    if (error) throw error;
+                    const c = app.settings.expenseCategories.find(x => x.id === parseInt(id));
+                    if (c) Object.assign(c, { name: data.name, color: data.color });
+                } else {
+                    const { data, error } = await sb.from('expense_categories').insert({ user_id: USER_ID, name, color }).select().single();
+                    if (error) throw error;
+                    app.settings.expenseCategories.push(data);
+                }
+
+                closeModal('categoryModal');
+                toast(id ? '✓ Category updated' : '✓ Category added');
+                updateSettingsPage();
+                updateOverview();
+            } catch (e) {
+                toast('❌ ' + e.message);
+                console.error(e);
+            }
+        }
+
+        async function deleteCategory(id) {
+            if (!confirm('Delete this category? Existing transactions will keep their reference.')) return;
+            try {
+                const { error } = await sb.from('expense_categories').delete().eq('id', id);
+                if (error) throw error;
+                app.settings.expenseCategories = app.settings.expenseCategories.filter(c => c.id !== id);
+                toast('✓ Deleted');
+                updateSettingsPage();
+                updateOverview();
+            } catch (e) {
+                toast('❌ ' + e.message);
+                console.error(e);
+            }
+        }
+
+        async function updateGoals() {
+            const incomeGoal = parseFloat(document.getElementById('incomeGoalInput').value) || 5000;
+            const efGoal = parseFloat(document.getElementById('efGoalInput').value) || 7000;
+            const debtGoal = parseFloat(document.getElementById('debtGoalInput').value) || 30000;
+
+            try {
+                const { error } = await sb.from('app_settings').update({
+                    income_goal: incomeGoal,
+                    ef_goal: efGoal,
+                    debt_goal: debtGoal,
+                    updated_at: new Date().toISOString()
+                }).eq('user_id', USER_ID);
+                if (error) throw error;
+                app.settings.incomeGoal = incomeGoal;
+                app.settings.efGoal = efGoal;
+                app.settings.debtGoal = debtGoal;
+                toast('✓ Goals updated');
+                updateOverview();
+            } catch (e) {
+                toast('❌ ' + e.message);
+                console.error(e);
+            }
+        }
+
+        function exportData() {
+            const dataStr = JSON.stringify(app, null, 2);
+            const a = document.createElement('a');
+            a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(dataStr);
+            a.download = 'financial_os_data_' + new Date().toISOString().split('T')[0] + '.json';
+            a.click();
+            toast('✓ Data exported');
+        }
+
+        async function clearAllData() {
+            if (!confirm('⚠️ Delete ALL cloud data?')) return;
+            if (!confirm('This cannot be undone. Continue?')) return;
+            try {
+                await Promise.all([
+                    sb.from('transactions').delete().eq('user_id', USER_ID),
+                    sb.from('debts').delete().eq('user_id', USER_ID),
+                    sb.from('accounts').delete().eq('user_id', USER_ID),
+                    sb.from('income_sources').delete().eq('user_id', USER_ID),
+                    sb.from('expense_categories').delete().eq('user_id', USER_ID),
+                    sb.from('app_settings').delete().eq('user_id', USER_ID)
+                ]);
+                toast('✓ Cleared');
+                location.reload();
+            } catch (e) {
+                toast('❌ ' + e.message);
+                console.error(e);
+            }
+        }
+
+        // ============ MODAL CONTROL ============
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('show');
+        }
+
+        window.onclick = function(e) {
+            if (e.target.classList.contains('modal')) e.target.classList.remove('show');
+        };
+
+        // ============ START ============
+        window.addEventListener('load', loadData);
+    </script>
+</body>
+</html>
